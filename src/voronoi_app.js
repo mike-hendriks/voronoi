@@ -16,6 +16,20 @@ class voronoi_app{
         this.version = "76"
         //---------------------------------------------------
         //---------------------------------------------------
+        // Animation state
+        this.animating = false
+        this.animation_frame_id = null
+        this.last_animation_time = 0
+        this.animation_throttle = 16 // milliseconds (~60fps)
+        
+        // Autonomous animation state
+        this.auto_animate = false
+        this.auto_animation_id = null
+        this.animation_speed = 0.3
+        this.animation_intensity = 15
+        this.animation_size_variance = 0.1
+        this.seed_velocities = []
+        this.seed_targets = []
         const config = JSON.parse(localStorage.getItem("voronoi_config"))
         if(config === null){
             console.log("First time usage, no config stored")
@@ -122,6 +136,7 @@ class voronoi_app{
         this.store()
     }
 
+
     draw(){
         this.draw_svg(this.svg.main,this.view_svg)
     }
@@ -143,6 +158,174 @@ class voronoi_app{
     compute_voronoi(){
         this.diagram.compute(this.seeds.get_seeds(),{xl:0, xr:parseFloat(this.width), yt:0, yb:parseFloat(this.height)})
         this.draw()
+    }
+
+    compute_voronoi_smooth(){
+        const currentTime = Date.now()
+        if(currentTime - this.last_animation_time >= this.animation_throttle){
+            this.last_animation_time = currentTime
+            if(this.animation_frame_id){
+                cancelAnimationFrame(this.animation_frame_id)
+            }
+            this.animation_frame_id = requestAnimationFrame(() => {
+                this.diagram.compute(this.seeds.get_seeds(),{xl:0, xr:parseFloat(this.width), yt:0, yb:parseFloat(this.height)})
+                this.draw()
+                this.animation_frame_id = null
+            })
+        }
+    }
+
+    init_seed_animation(){
+        const seeds = this.seeds.get_seeds()
+        this.seed_velocities = []
+        this.seed_targets = []
+        
+        for(let i = 0; i < seeds.length; i++){
+            // Initialize with random velocity
+            this.seed_velocities.push({
+                vx: (Math.random() - 0.5) * this.animation_speed,
+                vy: (Math.random() - 0.5) * this.animation_speed
+            })
+            // Set initial target as current position
+            this.seed_targets.push({
+                x: seeds[i].x,
+                y: seeds[i].y,
+                original_x: seeds[i].x,
+                original_y: seeds[i].y
+            })
+        }
+    }
+
+    animate_seeds(){
+        if(!this.auto_animate) return
+        
+        const seeds = this.seeds.get_seeds()
+        const w = parseFloat(this.width)
+        const h = parseFloat(this.height)
+        
+        // Ensure velocities are initialized
+        if(this.seed_velocities.length !== seeds.length){
+            this.init_seed_animation()
+        }
+        
+        for(let i = 0; i < seeds.length; i++){
+            const seed = seeds[i]
+            const vel = this.seed_velocities[i]
+            const target = this.seed_targets[i]
+            
+            // Update position with velocity
+            seed.x += vel.vx
+            seed.y += vel.vy
+            
+            // Keep seeds within bounds with soft boundaries
+            const margin = 20
+            if(seed.x < margin || seed.x > w - margin){
+                vel.vx *= -0.8 // Bounce with damping
+                seed.x = Math.max(margin, Math.min(w - margin, seed.x))
+            }
+            if(seed.y < margin || seed.y > h - margin){
+                vel.vy *= -0.8
+                seed.y = Math.max(margin, Math.min(h - margin, seed.y))
+            }
+            
+            // Add organic movement - drift toward a moving target
+            const time = Date.now() * 0.001
+            const drift_x = Math.sin(time * 0.5 + i * 0.5) * this.animation_intensity
+            const drift_y = Math.cos(time * 0.7 + i * 0.3) * this.animation_intensity
+            
+            target.x = target.original_x + drift_x
+            target.y = target.original_y + drift_y
+            
+            // Apply force toward target
+            const dx = target.x - seed.x
+            const dy = target.y - seed.y
+            const force = 0.02
+            
+            vel.vx += dx * force
+            vel.vy += dy * force
+            
+            // Add slight randomness for more organic feel
+            vel.vx += (Math.random() - 0.5) * 0.05
+            vel.vy += (Math.random() - 0.5) * 0.05
+            
+            // Apply damping to prevent excessive speed
+            vel.vx *= 0.95
+            vel.vy *= 0.95
+            
+            // Limit maximum velocity
+            const max_vel = 2.0
+            const speed = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy)
+            if(speed > max_vel){
+                vel.vx = (vel.vx / speed) * max_vel
+                vel.vy = (vel.vy / speed) * max_vel
+            }
+        }
+        
+        // Compute and redraw
+        this.diagram.compute(seeds, {xl:0, xr:w, yt:0, yb:h})
+        this.draw_with_animation()
+        
+        // Continue animation
+        this.auto_animation_id = requestAnimationFrame(() => this.animate_seeds())
+    }
+
+    draw_with_animation(){
+        // Custom draw that includes size variation based on velocity
+        this.clear_svg(this.svg.main)
+        
+        if(this.view_svg.shape){
+            this.shape.draw(this.svg.main)
+        }
+        
+        if(this.view_svg.cells){
+            const params = {
+                svg: this.svg.main,
+                shape: this.cells_shape,
+                color: this.is_color,
+                min_edge: this.min_edge,
+                retraction: this.cells_space,
+                debug: this.cell_debug,
+                animate: true,
+                velocities: this.seed_velocities,
+                size_variance: this.animation_size_variance
+            }
+            this.diagram.draw_cells_animated(params)
+        }
+        
+        if(this.view_svg.edges){
+            this.diagram.draw_edges({svg: this.svg.main})
+        }
+        
+        if(this.view_svg.seeds){
+            this.seeds.draw({svg: this.svg.main})
+        }
+    }
+
+    start_auto_animation(){
+        if(this.auto_animate) return
+        
+        this.auto_animate = true
+        this.init_seed_animation()
+        this.animate_seeds()
+    }
+
+    stop_auto_animation(){
+        this.auto_animate = false
+        if(this.auto_animation_id){
+            cancelAnimationFrame(this.auto_animation_id)
+            this.auto_animation_id = null
+        }
+        // Redraw to show final state
+        this.draw()
+    }
+
+    toggle_auto_animation(){
+        if(this.auto_animate){
+            this.stop_auto_animation()
+        }else{
+            this.start_auto_animation()
+        }
+        return this.auto_animate
     }
 
     update(params){
@@ -286,7 +469,7 @@ class voronoi_app{
             if(this.mouse_action == "move"){
                 if(e.buttons == 1){
                     this.seeds.move({x:e.offsetX, y:e.offsetY})
-                    this.compute_voronoi()
+                    this.compute_voronoi_smooth()
                 }
             }
         })
@@ -294,14 +477,14 @@ class voronoi_app{
             console.log(e.target.tagName)
             if(this.mouse_action == "move"){
                 this.seeds.move({x:e.touches[0].offsetX, y:e.touches[0].offsetY})
-                this.compute_voronoi()
+                this.compute_voronoi_smooth()
             }
         })
         $(this.svg.main).mousedown((e)=>{
             console.log("mouse down")
             if(this.mouse_action == "move"){
                 this.seeds.move({x:e.offsetX, y:e.offsetY})
-                this.compute_voronoi()
+                this.compute_voronoi_smooth()
             }
         })
         $(this.svg.main).on("touchstart",(e)=>{
@@ -309,12 +492,14 @@ class voronoi_app{
             const [x,y] = [e.touches[0].offsetX,e.touches[0].offsetY]
             if(this.mouse_action == "add"){
                 this.seeds.add({x:x, y:y})
+                this.compute_voronoi()
             }else if(this.mouse_action == "move"){
                 this.seeds.move({x:x, y:y})
+                this.compute_voronoi_smooth()
             }else if(this.mouse_action == "remove"){
                 this.seeds.remove({x:x, y:y})
+                this.compute_voronoi()
             }
-            this.compute_voronoi()
             e.preventDefault()
         })
 

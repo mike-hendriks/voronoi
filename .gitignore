@@ -2,3 +2,10 @@ node_modules
 exports
 template
 .firebase
+
+*.yarn
+yarn.lock
+package-lock.json
+node_modules
+
+.DS_Store

@@ -399,7 +399,66 @@ class voronoi_diag{
                     }
                     let color = (params.color==true)?rand_col():"#221155"
                     let filter = (cfg.use_filters)?'filter="url(#f_turb_disp)"':''
-                    html(group,/*html*/`<path d="${d}" fill="${color}" fill-opacity="0.2" ${filter}/>`)
+                    const cellId = `cell_${c.seed.id}`
+                    html(group,/*html*/`<path id="${cellId}" d="${d}" fill="${color}" fill-opacity="0.2" ${filter}/>`)
+                }
+            }
+            this.shape.remove_path()
+        }
+    }
+
+    draw_cells_animated(params){
+        let cfg = this.config
+        
+        svg.set_parent(params.svg)
+        if(this.cells.length>1){//otherwise single cell has no half edges
+            // Vary retraction based on velocity for pulsing effect
+            const base_retraction = params.retraction
+            this.retract_cells(params)
+            
+            let conditional_clip_path = (this.shape.config.cells_action == "cut_off")?'clip-path="url(#cut-off-cells)"':''
+            let group = html(params.svg,/*html*/`<g id="svg_g_bezier_cells" ${conditional_clip_path}/>`)
+            if(cfg.use_filters){svg.filter_turb_disp(group,{id:"f_turb_disp",disp_scale:cfg.disp_scale,turb_freq:cfg.turb_freq})}
+            this.shape.append_path()
+            const parentRect = this.shape.parent.getBoundingClientRect()
+            
+            for(let i=0;i<this.cells.length;i++){
+                const c = this.cells[i]
+                let draw_cell = true
+                if(this.shape.show_inside_path()){
+                    draw_cell = geom.inside_id(parentRect.x + c.seed.x, parentRect.y + c.seed.y,this.shape.svg_path.id)
+                }
+                if(draw_cell){
+                    // Calculate velocity magnitude for this cell
+                    let vel_magnitude = 1.0
+                    if(params.velocities && params.velocities[i]){
+                        const vel = params.velocities[i]
+                        vel_magnitude = Math.sqrt(vel.vx * vel.vx + vel.vy * vel.vy)
+                        vel_magnitude = 1.0 + vel_magnitude * params.size_variance
+                    }
+                    
+                    // Apply size variation by adjusting retraction
+                    const animated_retraction = base_retraction * (2 - vel_magnitude)
+                    const temp_params = Object.assign({}, params, {retraction: animated_retraction})
+                    
+                    let d
+                    if(params.shape == "cubic"){
+                        d = c.path_bezier_cubic_filter_no_s(params.min_edge)
+                    }else if(params.shape == "quadratic"){
+                        d = c.path_bezier_quadratic()
+                    }else{
+                        d = c.path_edges()
+                    }
+                    
+                    let color = (params.color==true)?rand_col():"#221155"
+                    let filter = (cfg.use_filters)?'filter="url(#f_turb_disp)"':''
+                    const cellId = `cell_${c.seed.id}`
+                    
+                    // Add opacity variation based on velocity for more dynamic feel
+                    const base_opacity = 0.2
+                    const opacity = base_opacity + (vel_magnitude - 1.0) * 0.1
+                    
+                    html(group,/*html*/`<path id="${cellId}" d="${d}" fill="${color}" fill-opacity="${opacity}" ${filter}/>`)
                 }
             }
             this.shape.remove_path()

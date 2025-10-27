@@ -371,6 +371,44 @@ function menu_filters(parent){
     }
 }
 
+function menu_animation(parent){
+    html(parent,/*html*/`<h5 style="margin-bottom:5px;color:#1F7BFD">Animation</h5>`)
+    
+    let btn_animate = bs.button(parent,"btn_animate",`Start Animation`);
+    
+    let label_speed = html(parent,/*html*/`<a style="margin:5px">Speed ${vor.animation_speed.toFixed(1)}</a>`)
+    let rg_speed = bs.input_range(parent,2.0,vor.animation_speed)
+    rg_speed.min = 0.1
+    rg_speed.step = 0.1
+    $(rg_speed).on("input",(e)=>{
+        label_speed.innerHTML = `Speed ${parseFloat(rg_speed.value).toFixed(1)}`
+        vor.animation_speed = parseFloat(rg_speed.value)
+    })
+
+    let label_intensity = html(parent,/*html*/`<a style="margin:5px">Intensity ${vor.animation_intensity}</a>`)
+    let rg_intensity = bs.input_range(parent,50,vor.animation_intensity)
+    rg_intensity.min = 5
+    $(rg_intensity).on("input",(e)=>{
+        label_intensity.innerHTML = `Intensity ${rg_intensity.value}`
+        vor.animation_intensity = parseFloat(rg_intensity.value)
+    })
+
+    let label_size = html(parent,/*html*/`<a style="margin:5px">Size Variation ${vor.animation_size_variance.toFixed(2)}</a>`)
+    let rg_size = bs.input_range(parent,0.5,vor.animation_size_variance)
+    rg_size.min = 0.0
+    rg_size.step = 0.01
+    $(rg_size).on("input",(e)=>{
+        label_size.innerHTML = `Size Variation ${parseFloat(rg_size.value).toFixed(2)}`
+        vor.animation_size_variance = parseFloat(rg_size.value)
+    })
+
+    $(btn_animate).click(()=>{
+        const isAnimating = vor.toggle_auto_animation()
+        btn_animate.innerHTML = isAnimating ? "Stop Animation" : "Start Animation"
+        btn_animate.className = isAnimating ? "btn btn-danger" : "btn btn-primary"
+    })
+}
+
 function main(){
 
     menu.svg_grid_div = grid.get_div({width:vor.width,height:vor.height})
@@ -390,6 +428,7 @@ function main(){
     menu_shape(grid.get_div({width:120,height:240}))
     menu_map(grid.get_div({width:120,height:240}))
 
+    menu_animation(grid.get_div({width:240,height:240}))
     menu_filters(grid.get_div({width:240,height:120}))
     menu_github_version(grid.get_div({width:240,height:120}))
 
