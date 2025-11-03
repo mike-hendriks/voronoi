@@ -214,16 +214,41 @@ class Seeds{
         const added_seeds = []
         
         for(let i = 0; i < count; i++){
-            // Pick a random existing seed as the "parent"
+            // Pick a random existing seed as the "parent" with bias towards outer ring
             let parent = null
             if(this.array.length > 0){
-                parent = this.array[Math.floor(Math.random() * this.array.length)]
+                // Calculate distance from center for each seed to bias selection
+                const center_x = w / 2
+                const center_y = h / 2
+                const max_dist = Math.sqrt(center_x * center_x + center_y * center_y)
+                
+                // Create weighted array - seeds further from center have higher weight
+                const weighted_seeds = []
+                for(let seed of this.array){
+                    const dx = seed.x - center_x
+                    const dy = seed.y - center_y
+                    const dist_from_center = Math.sqrt(dx * dx + dy * dy)
+                    // Normalize distance and apply bias (squared for stronger effect)
+                    const weight = Math.pow(dist_from_center / max_dist, 2)
+                    // Add seed multiple times based on weight (minimum 1 time)
+                    const copies = Math.max(1, Math.floor(weight * 3) + 1)
+                    for(let j = 0; j < copies; j++){
+                        weighted_seeds.push(seed)
+                    }
+                }
+                
+                // Select from weighted array
+                parent = weighted_seeds[Math.floor(Math.random() * weighted_seeds.length)]
             }
             
             // Calculate target position near parent
             let target_x, target_y, start_x, start_y
             if(parent){
-                const offset_distance = 30 + Math.random() * 50
+                // Much larger offset distance for more spread
+                // Use a percentage of canvas size for better scaling
+                const min_distance = Math.min(w, h) * 0.1  // 10% of smaller dimension
+                const max_distance = Math.min(w, h) * 0.4  // 40% of smaller dimension
+                const offset_distance = min_distance + Math.random() * (max_distance - min_distance)
                 const angle = Math.random() * Math.PI * 2
                 target_x = parent.x + Math.cos(angle) * offset_distance
                 target_y = parent.y + Math.sin(angle) * offset_distance
