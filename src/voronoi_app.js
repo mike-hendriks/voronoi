@@ -13,23 +13,24 @@ class voronoi_app{
         let init_needed = false
         //---------------------------------------------------
         //---------------------------------------------------
-        this.version = "76"
+        this.version = "88"
         //---------------------------------------------------
         //---------------------------------------------------
         // Animation state
-        this.animating = false
+        this.animating = true
         this.animation_frame_id = null
         this.last_animation_time = 0
         this.animation_throttle = 16 // milliseconds (~60fps)
         
         // Autonomous animation state
-        this.auto_animate = false
+        this.auto_animate = true
         this.auto_animation_id = null
         this.animation_speed = 0.3
         this.animation_intensity = 15
         this.animation_size_variance = 0.1
         this.seed_velocities = []
         this.seed_targets = []
+        this.growth_easing = "ease-out" // Options: linear, ease-in, ease-out, ease-in-out
         const config = JSON.parse(localStorage.getItem("voronoi_config"))
         if(config === null){
             console.log("First time usage, no config stored")
@@ -49,17 +50,18 @@ class voronoi_app{
             this.cell_debug = 0;
             this.min_edge = 6
             this.is_color = false//not usable yet as flickers on updates
-            this.width = 920
-            this.height = 480
+            this.width = 1920
+            this.height = 1080
             this.cells_shape = "cubic"
             this.cells_space = 2
             this.use_unit = false
             this.unit_ratio = 3.7795
             this.unit_ratio_default = 3.7795
+            this.background_color = "#384401"
             this.view_svg = {
                 cells:true,
                 edges:false,
-                seeds:true,
+                seeds:false,
                 shape:true
             }
             this.mouse_action = "move"
@@ -81,7 +83,7 @@ class voronoi_app{
         }
 
         this.svg = {}
-        this.svg.main = html(parent,/*html*/`<svg id="main_svg" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"></svg>`);
+        this.svg.main = html(parent,/*html*/`<svg id="main_svg" xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" style="background-color:${this.background_color}"></svg>`);
         this.shape.update({parent:this.svg.main})
         this.svg.seeds_area = null;
 
@@ -340,6 +342,10 @@ class voronoi_app{
         if(defined(params.shape_cells)){
             this.draw()
         }
+        if(defined(params.background_color)){
+            this.background_color = params.background_color
+            this.svg.main.style.backgroundColor = params.background_color
+        }
         if(defined(params.map)){
             // && (this.shape.map_used)
             //TODO shall be events based
@@ -362,6 +368,120 @@ class voronoi_app{
     update_seeds(params){
         this.seeds.update(params)
         this.compute_voronoi()
+    }
+    
+    add_seeds_after_timeout(count, timeoutMs, growthDuration = 500, staggerDelay = 200){
+        console.log(`Will add ${count} seeds after ${timeoutMs}ms`)
+        setTimeout(() => {
+            console.log(`Adding ${count} random seeds now...`)
+            const added_seeds = this.seeds.add_random_seeds(count, staggerDelay)
+            // Compute voronoi diagram but don't draw yet
+            this.diagram.compute(this.seeds.get_seeds(),{xl:0, xr:parseFloat(this.width), yt:0, yb:parseFloat(this.height)})
+            // Start animation which will handle drawing
+            this.animate_seed_growth(added_seeds, growthDuration)
+        }, timeoutMs)
+    }
+    
+    // Easing functions
+    easing_linear(t) {
+        return t
+    }
+    
+    easing_ease_in(t) {
+        return t * t
+    }
+    
+    easing_ease_out(t) {
+        return t * (2 - t)
+    }
+    
+    easing_ease_in_out(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    }
+    
+    apply_easing(t, easing_type) {
+        switch(easing_type) {
+            case "linear":
+                return this.easing_linear(t)
+            case "ease-in":
+                return this.easing_ease_in(t)
+            case "ease-out":
+                return this.easing_ease_out(t)
+            case "ease-in-out":
+                return this.easing_ease_in_out(t)
+            default:
+                return this.easing_ease_out(t)
+        }
+    }
+    
+    animate_seed_growth(seeds, duration){
+        const animate = () => {
+            const current_time = Date.now()
+            let all_complete = true
+            
+            for(let seed of seeds){
+                if(!defined(seed.birth_time)){
+                    continue
+                }
+                
+                const elapsed = current_time - seed.birth_time
+                
+                if(elapsed >= 0){
+                    if(elapsed < duration){
+                        // Calculate progress with easing
+                        const linear_progress = elapsed / duration
+                        const eased_progress = this.apply_easing(linear_progress, this.growth_easing)
+                        
+                        seed.scale = eased_progress
+                        
+                        // Animate position from parent to target
+                        if(defined(seed.target_x) && defined(seed.target_y)){
+                            // Calculate start position (stored temporarily)
+                            if(!defined(seed.start_x)){
+                                seed.start_x = seed.x
+                                seed.start_y = seed.y
+                            }
+                            
+                            // Interpolate position with easing
+                            seed.x = seed.start_x + (seed.target_x - seed.start_x) * eased_progress
+                            seed.y = seed.start_y + (seed.target_y - seed.start_y) * eased_progress
+                        }
+                        
+                        all_complete = false
+                    } else {
+                        // Growth complete
+                        seed.scale = 1
+                        
+                        // Set final position
+                        if(defined(seed.target_x) && defined(seed.target_y)){
+                            seed.x = seed.target_x
+                            seed.y = seed.target_y
+                            delete seed.target_x
+                            delete seed.target_y
+                            delete seed.start_x
+                            delete seed.start_y
+                        }
+                        
+                        delete seed.birth_time
+                        delete seed.parent_id
+                    }
+                } else {
+                    // Not born yet
+                    seed.scale = 0
+                    all_complete = false
+                }
+            }
+            
+            // Re-compute voronoi on each frame to update cell sizes and positions
+            this.diagram.compute(this.seeds.get_seeds(),{xl:0, xr:parseFloat(this.width), yt:0, yb:parseFloat(this.height)})
+            this.draw()
+            
+            if(!all_complete){
+                requestAnimationFrame(animate)
+            }
+        }
+        
+        requestAnimationFrame(animate)
     }
 
     update_size(clear){

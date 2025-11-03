@@ -33,10 +33,11 @@ class Svg{
         );
     }
     
-    circle_p_id(parent,x,y,id){
+    circle_p_id(parent,x,y,id,radius=3,opacity=1){
         //
+        const strokeWidth = Math.max(0.5, radius * 0.66)
         return html(parent,
-        /*html*/`<circle id=${id} cx=${x} cy=${y} r="3" stroke="black" stroke-width="2" fill="#1F7BFD" />`
+        /*html*/`<circle id=${id} cx=${x} cy=${y} r="${radius}" stroke="black" stroke-width="${strokeWidth}" fill="#1F7BFD" opacity="${opacity}" />`
         );
     }
     
@@ -79,6 +80,37 @@ class Svg{
                 numOctaves="2" result="turbulence"/>
             <feDisplacementMap in2="turbulence" in="SourceGraphic"
                 scale="${params.disp_scale}" xChannelSelector="R" yChannelSelector="A"/>
+            </filter>
+      `)
+    }
+
+    filter_inner_shadow(parent,params){
+        const p = params
+        return html(parent,/*html*/`
+            <filter id="${p.id}" x="-50%" y="-50%" width="200%" height="200%" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+                <feBlend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"/>
+                
+                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                <feOffset dx="${p.offset1_x}" dy="${p.offset1_y}"/>
+                <feGaussianBlur stdDeviation="${p.blur1}"/>
+                <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+                <feColorMatrix type="matrix" values="0 0 0 0 ${p.color1_r} 0 0 0 0 ${p.color1_g} 0 0 0 0 ${p.color1_b} 0 0 0 ${p.color1_a} 0"/>
+                <feBlend mode="normal" in2="shape" result="effect1_innerShadow"/>
+                
+                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                <feOffset dx="${p.offset2_x}" dy="${p.offset2_y}"/>
+                <feGaussianBlur stdDeviation="${p.blur2}"/>
+                <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+                <feColorMatrix type="matrix" values="0 0 0 0 ${p.color2_r} 0 0 0 0 ${p.color2_g} 0 0 0 0 ${p.color2_b} 0 0 0 ${p.color2_a} 0"/>
+                <feBlend mode="normal" in2="effect1_innerShadow" result="effect2_innerShadow"/>
+                
+                <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+                <feOffset dx="${p.offset3_x}" dy="${p.offset3_y}"/>
+                <feGaussianBlur stdDeviation="${p.blur3}"/>
+                <feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+                <feColorMatrix type="matrix" values="0 0 0 0 ${p.color3_r} 0 0 0 0 ${p.color3_g} 0 0 0 0 ${p.color3_b} 0 0 0 ${p.color3_a} 0"/>
+                <feBlend mode="normal" in2="effect2_innerShadow" result="effect3_innerShadow"/>
             </filter>
       `)
     }

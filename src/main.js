@@ -371,6 +371,99 @@ function menu_filters(parent){
     }
 }
 
+function menu_inner_shadow(parent){
+    let diag_cfg = vor.diagram.config
+    html(parent,/*html*/`<h5 style="margin-bottom:5px;color:#1F7BFD">Appearance</h5>`)
+    
+    // Background color input
+    let label_bg = html(parent,/*html*/`<a style="margin:5px">Background Color</a>`)
+    let input_bg_color = html(parent,/*html*/`<input type="color" id="bg_color" value="${vor.background_color}">`)
+    $(input_bg_color).on("input",(e)=>{
+        vor.update({background_color:e.target.value})
+    })
+    
+    html(parent,/*html*/`<hr style="margin:10px 0;">`)
+    html(parent,/*html*/`<h6 style="margin-bottom:5px;">Inner Shadow</h6>`)
+    
+    let main_cb_update = (e)=>{}
+    bs.checkbox_group(parent,"cbx_inner_shadow",["enable"],[diag_cfg.use_inner_shadow],(e)=>{main_cb_update(e)})
+    
+    // Fill color input
+    let label_fill = html(parent,/*html*/`<a style="margin:5px">Fill Color</a>`)
+    let input_fill_color = html(parent,/*html*/`<input type="color" id="fill_color" value="${diag_cfg.fill_color}">`)
+    $(input_fill_color).on("input",(e)=>{
+        vor.update({fill_color:e.target.value})
+    })
+    
+    // Fill opacity slider
+    let label_fill_opacity = html(parent,/*html*/`<a style="margin:5px">Fill Opacity ${diag_cfg.fill_opacity}</a>`)
+    let rg_fill_opacity = bs.input_range(parent,1,diag_cfg.fill_opacity)
+    rg_fill_opacity.step = 0.01
+    $(rg_fill_opacity).on("input",(e)=>{
+        label_fill_opacity.innerHTML = `Fill Opacity ${rg_fill_opacity.value}`
+        vor.update({fill_opacity:parseFloat(rg_fill_opacity.value)})
+    })
+    
+    // Shadow 1 color
+    let label_s1 = html(parent,/*html*/`<a style="margin:5px">Shadow Color 1 & 2</a>`)
+    let input_s1_color = html(parent,/*html*/`<input type="color" id="shadow1_color" value="${diag_cfg.shadow1_color}">`)
+    $(input_s1_color).on("input",(e)=>{
+        vor.update({shadow1_color:e.target.value})
+        // Update shadow 2 to match shadow 1
+        diag_cfg.shadow2_color = e.target.value
+        vor.draw()
+    })
+    
+    // Shadow 1 blur
+    let label_s1_blur = html(parent,/*html*/`<a style="margin:5px">Large Shadow Blur ${diag_cfg.shadow1_blur.toFixed(1)}</a>`)
+    let rg_s1_blur = bs.input_range(parent,200,diag_cfg.shadow1_blur)
+    rg_s1_blur.step = 1
+    $(rg_s1_blur).on("input",(e)=>{
+        label_s1_blur.innerHTML = `Large Shadow Blur ${parseFloat(rg_s1_blur.value).toFixed(1)}`
+        vor.update({shadow1_blur:parseFloat(rg_s1_blur.value)})
+        // Update shadow 2 to match shadow 1
+        diag_cfg.shadow2_blur = parseFloat(rg_s1_blur.value)
+        vor.draw()
+    })
+    
+    // Shadow 3 color
+    let label_s3 = html(parent,/*html*/`<a style="margin:5px">Highlight Color</a>`)
+    let input_s3_color = html(parent,/*html*/`<input type="color" id="shadow3_color" value="${diag_cfg.shadow3_color}">`)
+    $(input_s3_color).on("input",(e)=>{
+        vor.update({shadow3_color:e.target.value})
+    })
+    
+    // Shadow 3 blur
+    let label_s3_blur = html(parent,/*html*/`<a style="margin:5px">Highlight Blur ${diag_cfg.shadow3_blur.toFixed(1)}</a>`)
+    let rg_s3_blur = bs.input_range(parent,50,diag_cfg.shadow3_blur)
+    rg_s3_blur.step = 0.5
+    $(rg_s3_blur).on("input",(e)=>{
+        label_s3_blur.innerHTML = `Highlight Blur ${parseFloat(rg_s3_blur.value).toFixed(1)}`
+        vor.update({shadow3_blur:parseFloat(rg_s3_blur.value)})
+    })
+    
+    function set_visibility(vis){
+        label_fill.style.visibility = vis?"visible":"hidden"
+        input_fill_color.style.visibility = vis?"visible":"hidden"
+        label_fill_opacity.style.visibility = vis?"visible":"hidden"
+        rg_fill_opacity.style.visibility = vis?"visible":"hidden"
+        label_s1.style.visibility = vis?"visible":"hidden"
+        input_s1_color.style.visibility = vis?"visible":"hidden"
+        label_s1_blur.style.visibility = vis?"visible":"hidden"
+        rg_s1_blur.style.visibility = vis?"visible":"hidden"
+        label_s3.style.visibility = vis?"visible":"hidden"
+        input_s3_color.style.visibility = vis?"visible":"hidden"
+        label_s3_blur.style.visibility = vis?"visible":"hidden"
+        rg_s3_blur.style.visibility = vis?"visible":"hidden"
+    }
+    
+    set_visibility(diag_cfg.use_inner_shadow)
+    main_cb_update = (e)=>{
+        vor.update({use_inner_shadow:e.target.checked})
+        set_visibility(e.target.checked)
+    }
+}
+
 function menu_animation(parent){
     html(parent,/*html*/`<h5 style="margin-bottom:5px;color:#1F7BFD">Animation</h5>`)
     
@@ -409,6 +502,64 @@ function menu_animation(parent){
     })
 }
 
+function menu_add_seeds_delayed(parent){
+    html(parent,/*html*/`<h5 style="margin-bottom:5px;color:#1F7BFD">Add Seeds Delayed</h5>`)
+    
+    let label_count = html(parent,/*html*/`<a style="margin:5px">Number of Seeds</a>`)
+    let input_count = bs.input_text(parent,"input_seed_count",`5`,"w-100");
+    input_count.type = "number"
+    input_count.min = "1"
+    input_count.max = "100"
+    input_count.value = "2"
+    
+    let label_timeout = html(parent,/*html*/`<a style="margin:5px">Timeout (seconds)</a>`)
+    let input_timeout = bs.input_text(parent,"input_timeout",`2`,"w-100");
+    input_timeout.type = "number"
+    input_timeout.min = "0.1"
+    input_timeout.max = "60"
+    input_timeout.step = "0.1"
+    input_timeout.value = "2"
+    
+    // Add seeds growth settings
+    let label_growth = html(parent,/*html*/`<a style="margin:5px">Growth Duration (seconds)</a>`)
+    let input_growth = bs.input_text(parent,"input_growth",`0.5`,"w-100");
+    input_growth.type = "number"
+    input_growth.min = "0.1"
+    input_growth.max = "2"
+    input_growth.step = "0.1"
+    input_growth.value = "0.3"
+    
+    let label_easing = html(parent,/*html*/`<a style="margin:5px">Growth Easing</a>`)
+    let select_easing = html(parent,/*html*/`
+        <select id="select_easing" class="form-control w-100" style="margin-bottom:10px">
+            <option value="linear">Linear</option>
+            <option value="ease-in">Ease In</option>
+            <option value="ease-out" selected>Ease Out</option>
+            <option value="ease-in-out">Ease In-Out</option>
+        </select>
+    `)
+    $(select_easing).change((e)=>{
+        vor.growth_easing = e.target.value
+        console.log("Growth easing set to:", vor.growth_easing)
+    })
+    
+    let btn_add = bs.button(parent,"btn_add_seeds",`Add Seeds After Timeout`);
+    $(btn_add).click((e)=>{
+        const count = parseInt(input_count.value) || 5
+        const timeoutSeconds = parseFloat(input_timeout.value) || 2
+        const growthSeconds = parseFloat(input_growth.value) || 0.5
+        const timeoutMs = timeoutSeconds * 1000
+        const growthMs = growthSeconds * 1000
+        const staggerMs = 100 // Fixed stagger delay of 0.2s
+        
+        vor.add_seeds_after_timeout(count, timeoutMs, growthMs, staggerMs)
+        btn_add.innerHTML = `Adding ${count} seeds in ${timeoutSeconds}s...`
+        setTimeout(() => {
+            btn_add.innerHTML = `Add Seeds After Timeout`
+        }, timeoutMs + 100)
+    })
+}
+
 function main(){
 
     menu.svg_grid_div = grid.get_div({width:vor.width,height:vor.height})
@@ -429,7 +580,9 @@ function main(){
     menu_map(grid.get_div({width:120,height:240}))
 
     menu_animation(grid.get_div({width:240,height:240}))
+    menu_add_seeds_delayed(grid.get_div({width:240,height:180}))
     menu_filters(grid.get_div({width:240,height:120}))
+    menu_inner_shadow(grid.get_div({width:240,height:240}))
     menu_github_version(grid.get_div({width:240,height:120}))
 
     grid.apply()

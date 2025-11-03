@@ -64,7 +64,7 @@ class Seeds{
         this.config = {}
         this.config.is_debug = false
         this.config.debug_id = 0
-        this.config.nb_seeds = 30
+        this.config.nb_seeds = 5
         this.config.max_seeds = 200
         this.config.area = {width:400,height:200}
         this.config.nb_samples = 10
@@ -207,6 +207,56 @@ class Seeds{
         let s = {x:coord.x, y:coord.y, id:new_id}
         this.array.push(s)
     }
+    
+    add_random_seeds(count, stagger_delay = 0){
+        const w = this.config.area.width
+        const h = this.config.area.height
+        const added_seeds = []
+        
+        for(let i = 0; i < count; i++){
+            // Pick a random existing seed as the "parent"
+            let parent = null
+            if(this.array.length > 0){
+                parent = this.array[Math.floor(Math.random() * this.array.length)]
+            }
+            
+            // Calculate target position near parent
+            let target_x, target_y, start_x, start_y
+            if(parent){
+                const offset_distance = 30 + Math.random() * 50
+                const angle = Math.random() * Math.PI * 2
+                target_x = parent.x + Math.cos(angle) * offset_distance
+                target_y = parent.y + Math.sin(angle) * offset_distance
+                // Clamp to bounds
+                target_x = Math.max(10, Math.min(w - 10, target_x))
+                target_y = Math.max(10, Math.min(h - 10, target_y))
+                // Start at parent position
+                start_x = parent.x
+                start_y = parent.y
+            } else {
+                target_x = Math.random() * w
+                target_y = Math.random() * h
+                start_x = target_x
+                start_y = target_y
+            }
+            
+            const new_id = this.array[this.array.length-1].id + 1
+            let s = {
+                x: start_x,  // Start at parent position
+                y: start_y,
+                target_x: target_x,  // Store final position
+                target_y: target_y,
+                id: new_id, 
+                scale: 0, 
+                birth_time: Date.now() + (i * stagger_delay),
+                parent_id: parent ? parent.id : null
+            }
+            this.array.push(s)
+            added_seeds.push(s)
+        }
+        return added_seeds
+    }
+    
     remove(coord){
         const closest = get_closest_index(this.array,coord)
         this.array.splice(closest,1)
@@ -274,14 +324,18 @@ class Seeds{
                     const parentRect = this.shape.parent.getBoundingClientRect()
                     // Convert to viewport coordinates for hit testing
                     if(geom.inside_id(s.x + parentRect.x, s.y + parentRect.y, this.shape.svg_path.id)){
-                        svg.circle_p_id(group,s.x,s.y,`c_${s.id}`)
+                        const radius = defined(s.scale) ? 3 * s.scale : 3
+                        const opacity = defined(s.scale) ? s.scale : 1
+                        svg.circle_p_id(group,s.x,s.y,`c_${s.id}`, radius, opacity)
                     }
                 }
                 this.shape.remove_path()
             }else{
                 for(let i=0;i<this.array.length;i++){
                     const s = this.array[i]
-                    svg.circle_p_id(group,s.x,s.y,`c_${s.id}`)
+                    const radius = defined(s.scale) ? 3 * s.scale : 3
+                    const opacity = defined(s.scale) ? s.scale : 1
+                    svg.circle_p_id(group,s.x,s.y,`c_${s.id}`, radius, opacity)
                 }
             }
         }
