@@ -560,6 +560,49 @@ function menu_add_seeds_delayed(parent){
     })
 }
 
+function menu_split_seeds_delayed(parent){
+    html(parent,/*html*/`<h5 style="margin-bottom:5px;color:#1F7BFD">Split Seeds Delayed</h5>`)
+    
+    let label_count = html(parent,/*html*/`<a style="margin:5px">Number of Seeds to Split</a>`)
+    let input_count = bs.input_text(parent,"input_split_count",`4`,"w-100");
+    input_count.type = "number"
+    input_count.min = "1"
+    input_count.max = "50"
+    input_count.value = "4"
+    
+    let label_timeout = html(parent,/*html*/`<a style="margin:5px">Timeout (seconds)</a>`)
+    let input_timeout = bs.input_text(parent,"input_split_timeout",`2`,"w-100");
+    input_timeout.type = "number"
+    input_timeout.min = "0.1"
+    input_timeout.max = "60"
+    input_timeout.step = "0.1"
+    input_timeout.value = "2"
+    
+    let label_growth = html(parent,/*html*/`<a style="margin:5px">Split Duration (seconds)</a>`)
+    let input_growth = bs.input_text(parent,"input_split_growth",`0.5`,"w-100");
+    input_growth.type = "number"
+    input_growth.min = "0.1"
+    input_growth.max = "2"
+    input_growth.step = "0.1"
+    input_growth.value = "0.5"
+    
+    let btn_split = bs.button(parent,"btn_split_seeds",`Split Seeds After Timeout`);
+    $(btn_split).click((e)=>{
+        const count = parseInt(input_count.value) || 4
+        const timeoutSeconds = parseFloat(input_timeout.value) || 2
+        const growthSeconds = parseFloat(input_growth.value) || 0.5
+        const timeoutMs = timeoutSeconds * 1000
+        const growthMs = growthSeconds * 1000
+        const staggerMs = 100 // Fixed stagger delay
+        
+        vor.split_seeds_after_timeout(count, timeoutMs, growthMs, staggerMs)
+        btn_split.innerHTML = `Splitting ${count} seeds in ${timeoutSeconds}s...`
+        setTimeout(() => {
+            btn_split.innerHTML = `Split Seeds After Timeout`
+        }, timeoutMs + 100)
+    })
+}
+
 function main(){
 
     menu.svg_grid_div = grid.get_div({width:vor.width,height:vor.height})
@@ -581,6 +624,7 @@ function main(){
 
     menu_animation(grid.get_div({width:240,height:240}))
     menu_add_seeds_delayed(grid.get_div({width:240,height:180}))
+    menu_split_seeds_delayed(grid.get_div({width:240,height:180}))
     menu_filters(grid.get_div({width:240,height:120}))
     menu_inner_shadow(grid.get_div({width:240,height:240}))
     menu_github_version(grid.get_div({width:240,height:120}))

@@ -13,7 +13,7 @@ class voronoi_app{
         let init_needed = false
         //---------------------------------------------------
         //---------------------------------------------------
-        this.version = "91"
+        this.version = "93"
         //---------------------------------------------------
         //---------------------------------------------------
         // Animation state
@@ -379,6 +379,18 @@ class voronoi_app{
             this.diagram.compute(this.seeds.get_seeds(),{xl:0, xr:parseFloat(this.width), yt:0, yb:parseFloat(this.height)})
             // Start animation which will handle drawing
             this.animate_seed_growth(added_seeds, growthDuration)
+        }, timeoutMs)
+    }
+    
+    split_seeds_after_timeout(count, timeoutMs, growthDuration = 500, staggerDelay = 200){
+        console.log(`Will split ${count} seeds after ${timeoutMs}ms`)
+        setTimeout(() => {
+            console.log(`Splitting ${count} random seeds now...`)
+            const split_seeds = this.seeds.split_random_seeds(count, staggerDelay)
+            // Compute voronoi diagram but don't draw yet
+            this.diagram.compute(this.seeds.get_seeds(),{xl:0, xr:parseFloat(this.width), yt:0, yb:parseFloat(this.height)})
+            // Start animation which will handle drawing (includes both new seeds and moving parent seeds)
+            this.animate_seed_growth(split_seeds, growthDuration)
         }, timeoutMs)
     }
     

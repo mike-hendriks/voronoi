@@ -282,6 +282,127 @@ class Seeds{
         return added_seeds
     }
     
+    split_random_seeds(count, stagger_delay = 0){
+        const w = this.config.area.width
+        const h = this.config.area.height
+        const split_seeds = []
+        
+        // Select random seeds to split (with bias towards larger cells and outer ring)
+        const seeds_to_split = []
+        const available_seeds = [...this.array]
+        
+        // Calculate weighted selection based on both position and cell size
+        const center_x = w / 2
+        const center_y = h / 2
+        const max_dist = Math.sqrt(center_x * center_x + center_y * center_y)
+        
+        // Calculate approximate cell size for each seed based on nearest neighbor distances
+        const seed_sizes = new Map()
+        for(let seed of available_seeds){
+            // Find distance to 3 nearest neighbors
+            let distances = []
+            for(let other of available_seeds){
+                if(other.id !== seed.id){
+                    const dx = seed.x - other.x
+                    const dy = seed.y - other.y
+                    const dist = Math.sqrt(dx * dx + dy * dy)
+                    distances.push(dist)
+                }
+            }
+            // Sort and take average of 3 nearest neighbors as proxy for cell size
+            distances.sort((a, b) => a - b)
+            const avg_dist = distances.slice(0, Math.min(3, distances.length)).reduce((a, b) => a + b, 0) / Math.min(3, distances.length)
+            seed_sizes.set(seed.id, avg_dist)
+        }
+        
+        // Find max size for normalization
+        let max_size = 0
+        for(let size of seed_sizes.values()){
+            if(size > max_size) max_size = size
+        }
+        
+        for(let i = 0; i < Math.min(count, available_seeds.length); i++){
+            // Create weighted array for remaining seeds
+            const weighted_seeds = []
+            for(let seed of available_seeds){
+                // Weight based on distance from center
+                const dx = seed.x - center_x
+                const dy = seed.y - center_y
+                const dist_from_center = Math.sqrt(dx * dx + dy * dy)
+                const position_weight = Math.pow(dist_from_center / max_dist, 1.5)
+                
+                // Weight based on cell size (larger cells more likely to split)
+                const size = seed_sizes.get(seed.id) || 1
+                const size_weight = Math.pow(size / max_size, 2)
+                
+                // Combined weight (size has stronger influence)
+                const combined_weight = (size_weight * 2 + position_weight) / 3
+                const copies = Math.max(1, Math.floor(combined_weight * 4) + 1)
+                
+                for(let j = 0; j < copies; j++){
+                    weighted_seeds.push(seed)
+                }
+            }
+            
+            // Select one seed to split
+            const selected = weighted_seeds[Math.floor(Math.random() * weighted_seeds.length)]
+            seeds_to_split.push(selected)
+            
+            // Remove from available to avoid selecting same seed twice
+            const idx = available_seeds.indexOf(selected)
+            if(idx > -1) available_seeds.splice(idx, 1)
+        }
+        
+        // For each selected seed, create a new seed that will split from it
+        for(let i = 0; i < seeds_to_split.length; i++){
+            const parent = seeds_to_split[i]
+            
+            // Calculate split direction (random angle)
+            const angle = Math.random() * Math.PI * 2
+            // Split distance - relatively small to create division effect
+            const split_distance = Math.min(w, h) * 0.08  // 8% of smaller dimension
+            
+            // Target position for the new seed
+            const target_x = parent.x + Math.cos(angle) * split_distance
+            const target_y = parent.y + Math.sin(angle) * split_distance
+            
+            // Clamp to bounds
+            const clamped_target_x = Math.max(10, Math.min(w - 10, target_x))
+            const clamped_target_y = Math.max(10, Math.min(h - 10, target_y))
+            
+            // Move the parent seed in opposite direction (for split effect)
+            const parent_target_x = parent.x - Math.cos(angle) * split_distance
+            const parent_target_y = parent.y - Math.sin(angle) * split_distance
+            
+            // Store parent's original position and set up animation
+            parent.target_x = Math.max(10, Math.min(w - 10, parent_target_x))
+            parent.target_y = Math.max(10, Math.min(h - 10, parent_target_y))
+            parent.start_x = parent.x
+            parent.start_y = parent.y
+            parent.scale = 1.0  // Parent stays full size
+            parent.birth_time = Date.now() + (i * stagger_delay)
+            
+            // Create new seed
+            const new_id = this.array[this.array.length-1].id + 1
+            let s = {
+                x: parent.x,  // Start at parent's current position
+                y: parent.y,
+                target_x: clamped_target_x,
+                target_y: clamped_target_y,
+                start_x: parent.x,
+                start_y: parent.y,
+                id: new_id, 
+                scale: 0.5,  // Start at half size for split effect
+                birth_time: Date.now() + (i * stagger_delay),
+                parent_id: parent.id
+            }
+            this.array.push(s)
+            split_seeds.push(s)
+        }
+        
+        return split_seeds
+    }
+    
     remove(coord){
         const closest = get_closest_index(this.array,coord)
         this.array.splice(closest,1)
