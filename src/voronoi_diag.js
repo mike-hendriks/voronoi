@@ -312,6 +312,7 @@ class voronoi_diag{
         this.cells = []
         this.org_cells = []
         this.edges = []
+        this.growing_seeds = []
         this.config = {}
         let cfg = this.config
         cfg.cell_debug = 0
@@ -369,7 +370,14 @@ class voronoi_diag{
 
     compute(seeds,params){
         console.time("voronoi")
-        let vor_result = vor_rhill.compute(seeds,params)
+        
+        // Separate growing seeds - use a progressive threshold
+        // Seeds with scale < 0.3 have reduced influence in the Voronoi computation
+        const MIN_THRESHOLD = 0.3
+        const filtered_seeds = seeds.filter(s => !defined(s.scale) || s.scale >= MIN_THRESHOLD)
+        this.growing_seeds = seeds.filter(s => defined(s.scale) && s.scale < MIN_THRESHOLD)
+        
+        let vor_result = vor_rhill.compute(filtered_seeds,params)
         console.timeEnd("voronoi")
         this.edges = vor_result.edges
         console.time("post proc")
@@ -494,6 +502,33 @@ class voronoi_diag{
             
             this.shape.append_path()
             const parentRect = this.shape.parent.getBoundingClientRect()
+            
+            // Draw growing seeds as small circles first
+            if(defined(this.growing_seeds) && this.growing_seeds.length > 0){
+                let color = cfg.use_inner_shadow ? cfg.fill_color : "#221155"
+                for(let seed of this.growing_seeds){
+                    let draw_seed = true
+                    if(this.shape.show_inside_path()){
+                        draw_seed = geom.inside_id(parentRect.x + seed.x, parentRect.y + seed.y, this.shape.svg_path.id)
+                    }
+                    if(draw_seed){
+                        // Draw as a small circle that grows
+                        const max_radius = 30 // Maximum radius for the placeholder circle
+                        const radius = max_radius * seed.scale
+                        const opacity = (cfg.use_inner_shadow ? cfg.fill_opacity : 0.2) * seed.scale
+                        
+                        // Build filter string
+                        let filters = []
+                        if(cfg.use_filters) filters.push('url(#f_turb_disp)')
+                        if(cfg.use_inner_shadow) filters.push('url(#f_inner_shadow)')
+                        let filter_attr = filters.length > 0 ? `filter="${filters.join(' ')}"` : ''
+                        
+                        html(group,/*html*/`<circle id="growing_${seed.id}" cx="${seed.x}" cy="${seed.y}" r="${radius}" fill="${color}" fill-opacity="${opacity}" ${filter_attr}/>`)
+                    }
+                }
+            }
+            
+            // Draw regular cells
             for(let i=0;i<this.cells.length;i++){
                 const c = this.cells[i]
                 //here you can retract or detract small edges before either drawing technique
