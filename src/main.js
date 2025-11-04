@@ -522,10 +522,10 @@ function menu_add_seeds_delayed(parent){
     
     // Add seeds growth settings
     let label_growth = html(parent,/*html*/`<a style="margin:5px">Growth Duration (seconds)</a>`)
-    let input_growth = bs.input_text(parent,"input_growth",`0.5`,"w-100");
+    let input_growth = bs.input_text(parent,"input_growth",`1.0`,"w-100");
     input_growth.type = "number"
     input_growth.min = "0.1"
-    input_growth.max = "2"
+    input_growth.max = "5"
     input_growth.step = "0.1"
     input_growth.value = "0.3"
     
@@ -534,8 +534,10 @@ function menu_add_seeds_delayed(parent){
         <select id="select_easing" class="form-control w-100" style="margin-bottom:10px">
             <option value="linear">Linear</option>
             <option value="ease-in">Ease In</option>
-            <option value="ease-out" selected>Ease Out</option>
+            <option value="ease-out">Ease Out</option>
             <option value="ease-in-out">Ease In-Out</option>
+            <option value="smooth">Smooth (Cubic)</option>
+            <option value="ultra-smooth" selected>Ultra Smooth (Quintic)</option>
         </select>
     `)
     $(select_easing).change((e)=>{
@@ -550,7 +552,7 @@ function menu_add_seeds_delayed(parent){
         const growthSeconds = parseFloat(input_growth.value) || 0.5
         const timeoutMs = timeoutSeconds * 1000
         const growthMs = growthSeconds * 1000
-        const staggerMs = 100 // Fixed stagger delay of 0.2s
+        const staggerMs = 50 // Fixed stagger delay - short for fluid overlap
         
         vor.add_seeds_after_timeout(count, timeoutMs, growthMs, staggerMs)
         btn_add.innerHTML = `Adding ${count} seeds in ${timeoutSeconds}s...`
@@ -568,7 +570,7 @@ function menu_split_seeds_delayed(parent){
     input_count.type = "number"
     input_count.min = "1"
     input_count.max = "50"
-    input_count.value = "4"
+    input_count.value = "2"
     
     let label_timeout = html(parent,/*html*/`<a style="margin:5px">Timeout (seconds)</a>`)
     let input_timeout = bs.input_text(parent,"input_split_timeout",`2`,"w-100");
@@ -579,12 +581,12 @@ function menu_split_seeds_delayed(parent){
     input_timeout.value = "2"
     
     let label_growth = html(parent,/*html*/`<a style="margin:5px">Split Duration (seconds)</a>`)
-    let input_growth = bs.input_text(parent,"input_split_growth",`0.5`,"w-100");
+    let input_growth = bs.input_text(parent,"input_split_growth",`1.5`,"w-100");
     input_growth.type = "number"
     input_growth.min = "0.1"
-    input_growth.max = "2"
+    input_growth.max = "5"
     input_growth.step = "0.1"
-    input_growth.value = "0.5"
+    input_growth.value = "0.3"
     
     let btn_split = bs.button(parent,"btn_split_seeds",`Split Seeds After Timeout`);
     $(btn_split).click((e)=>{
@@ -593,7 +595,7 @@ function menu_split_seeds_delayed(parent){
         const growthSeconds = parseFloat(input_growth.value) || 0.5
         const timeoutMs = timeoutSeconds * 1000
         const growthMs = growthSeconds * 1000
-        const staggerMs = 100 // Fixed stagger delay
+        const staggerMs = 50 // Fixed stagger delay - short for fluid overlap
         
         vor.split_seeds_after_timeout(count, timeoutMs, growthMs, staggerMs)
         btn_split.innerHTML = `Splitting ${count} seeds in ${timeoutSeconds}s...`

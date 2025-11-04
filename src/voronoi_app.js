@@ -13,7 +13,7 @@ class voronoi_app{
         let init_needed = false
         //---------------------------------------------------
         //---------------------------------------------------
-        this.version = "93"
+        this.version = "94"
         //---------------------------------------------------
         //---------------------------------------------------
         // Animation state
@@ -30,7 +30,7 @@ class voronoi_app{
         this.animation_size_variance = 0.1
         this.seed_velocities = []
         this.seed_targets = []
-        this.growth_easing = "ease-out" // Options: linear, ease-in, ease-out, ease-in-out
+        this.growth_easing = "ultra-smooth" // Options: linear, ease-in, ease-out, ease-in-out, smooth, ultra-smooth
         const config = JSON.parse(localStorage.getItem("voronoi_config"))
         if(config === null){
             console.log("First time usage, no config stored")
@@ -411,6 +411,16 @@ class voronoi_app{
         return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t
     }
     
+    // Smoother, lava-lamp-like easing (cubic)
+    easing_smooth(t) {
+        return t * t * (3 - 2 * t)  // Smoothstep
+    }
+    
+    // Ultra-smooth easing (quintic)
+    easing_ultra_smooth(t) {
+        return t * t * t * (t * (t * 6 - 15) + 10)  // Smootherstep
+    }
+    
     apply_easing(t, easing_type) {
         switch(easing_type) {
             case "linear":
@@ -421,8 +431,12 @@ class voronoi_app{
                 return this.easing_ease_out(t)
             case "ease-in-out":
                 return this.easing_ease_in_out(t)
+            case "smooth":
+                return this.easing_smooth(t)
+            case "ultra-smooth":
+                return this.easing_ultra_smooth(t)
             default:
-                return this.easing_ease_out(t)
+                return this.easing_ultra_smooth(t)  // Default to smoothest
         }
     }
     
